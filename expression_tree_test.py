@@ -1,7 +1,7 @@
 import unittest
 from hypothesis import given,  strategies
 
-from foo import Foo
+from expression_tree import Foo
 
 
 class TestFoo(unittest.TestCase):

@@ -22,6 +22,11 @@ the visualization of the data flow graph.
 
 ## Changelog
 
+- 13.05.2024 - 1
+  Implementing basic functionalities to build expression trees
+  and evaluate expression results.
+  Implementing functionalities to support user-defined functions.
+
 - 05.05.2024 - 0
   Initial
 

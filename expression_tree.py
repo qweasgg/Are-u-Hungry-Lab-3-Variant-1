@@ -199,9 +199,13 @@ class ExpressionTreeInterpreter:
             add_edges(graph, tree)
 
             pos = nx.spring_layout(graph)
-            labels = {node: data['label'] for node, data in graph.nodes(data=True)}
+            labels = {node: data['label'] for node,\
+                      data in graph.nodes(data=True)}
             plt.figure()
-            nx.draw(graph, pos, labels=labels, with_labels=True, node_size=1500, node_color='skyblue', font_size=10, font_weight='bold', arrows=True)
+            nx.draw(graph, pos, labels=labels,
+                    with_labels=True, node_size=1500,
+                    node_color='skyblue', font_size=10,
+                    font_weight='bold', arrows=True)
             plt.show()
         finally:
             # Re-enable logging

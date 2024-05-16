@@ -199,7 +199,7 @@ class ExpressionTreeInterpreter:
             add_edges(graph, tree)
 
             pos = nx.spring_layout(graph)
-            labels = {node: data['label'] for node,\
+            labels = {node: data['label'] for node, 
                       data in graph.nodes(data=True)}
             plt.figure()
             nx.draw(graph, pos, labels=labels,

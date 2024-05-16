@@ -7,8 +7,8 @@ the visualization of the data flow graph.
 
 ## Project structure
 
-- `expression_tree.py` -- implementation of `ExpresssionTree` class and `MathInterpreter` class
-   Stateless.
+- `expression_tree.py` -- implementation of `ExpresssionTree` class
+   and `MathInterpreter` class.
 - `expression_tree_test.py` -- unit and PBT tests for `MathInterpreter`.
 
 ## Features
@@ -40,11 +40,12 @@ the visualization of the data flow graph.
   The input language should be a string representing a mathematical expression,
   for example, the input string could be like "a + 2 - sin(-0.3)*(b - c)".
 - Design Type:
-  Design an appropriate data structure to represent an expression tree, where each internal
-  node represents an operator and each leaf node represents an operand.
+  Design an appropriate data structure to represent an expression tree, where
+  each internal node represents an operator and each leaf node
+  represents an operand.
 - Implement Interpreter Functionality:
-  1. Parse the input string into an expression tree.
-  2. Calculate the value of the expression based on the expression tree.
-  3. Support user-defined functions.
-  4. Handle runtime errors and provide detailed error messages.
+    Parse the input string into an expression tree.
+    Calculate the value of the expression based on the expression tree.
+    Support user-defined functions.
+    Handle runtime errors and provide detailed error messages.
 - Write test cases, including simple expressions, complex expressions, and edge cases.

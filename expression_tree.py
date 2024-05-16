@@ -1,10 +1,8 @@
 import re
 import math
 import logging
-import graphviz
-import tempfile
-import shutil
 import matplotlib.pyplot as plt
+import networkx as nx
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -181,49 +179,34 @@ class ExpressionTreeInterpreter:
             logger.error(f"Error evaluating expression: {str(e)}")
             raise RuntimeError(f"Error evaluating expression: {str(e)}")
 
-    def visualize_tree(self, node):
-        dot = graphviz.Digraph(format='png')
-        self._add_nodes(dot, node)
-        self._add_edges(dot, node)
+    def visualize_tree(self, tree):
+        def add_edges(graph, node, parent=None):
+            if node:
+                node_id = id(node)
+                graph.add_node(node_id, label=node.value)
+                if parent:
+                    graph.add_edge(parent, node_id)
+                add_edges(graph, node.left, node_id)
+                add_edges(graph, node.right, node_id)
+                for param in node.parameters:
+                    add_edges(graph, param, node_id)
 
-        # Temporarily disable logging
+        # Disable logging
         logging.disable(logging.CRITICAL)
 
-        temp_dir = tempfile.mkdtemp()
-        output_path = f'{temp_dir}/expression_tree'
-        dot.render(output_path, format='png', view=False)
+        try:
+            graph = nx.DiGraph()
+            add_edges(graph, tree)
 
-        # Display the image using matplotlib
-        img = plt.imread(f'{output_path}.png')
-        plt.imshow(img)
-        plt.axis('off')
-        plt.show()
-        shutil.rmtree(temp_dir)
+            pos = nx.spring_layout(graph)
+            labels = {node: data['label'] for node, data in graph.nodes(data=True)}
+            plt.figure()
+            nx.draw(graph, pos, labels=labels, with_labels=True, node_size=1500, node_color='skyblue', font_size=10, font_weight='bold', arrows=True)
+            plt.show()
+        finally:
+            # Re-enable logging
+            logging.disable(logging.NOTSET)
 
-        # Re-enable logging
-        logging.disable(logging.NOTSET)
-
-    def _add_nodes(self, dot, node):
-        if node:
-            dot.node(str(id(node)), node.value)
-            if node.left:
-                self._add_nodes(dot, node.left)
-            if node.right:
-                self._add_nodes(dot, node.right)
-            for param in node.parameters:
-                self._add_nodes(dot, param)
-
-    def _add_edges(self, dot, node):
-        if node:
-            if node.left:
-                dot.edge(str(id(node)), str(id(node.left)))
-                self._add_edges(dot, node.left)
-            if node.right:
-                dot.edge(str(id(node)), str(id(node.right)))
-                self._add_edges(dot, node.right)
-            for param in node.parameters:
-                dot.edge(str(id(node)), str(id(param)))
-                self._add_edges(dot, param)
 
 # # Test 1
 # expression = "a + 2 - sin(-30)*(b - c)"

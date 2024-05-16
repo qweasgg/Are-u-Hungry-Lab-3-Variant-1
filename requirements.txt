@@ -1,4 +1,4 @@
 hypothesis
-graphviz
 matplotlib
+networkx
 black

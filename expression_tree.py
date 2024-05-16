@@ -2,7 +2,7 @@ import re
 import math
 import logging
 import matplotlib.pyplot as plt
-import networkx as nx
+import networkx as nx  # type: ignore
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)

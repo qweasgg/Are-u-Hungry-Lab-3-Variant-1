@@ -1,2 +1,4 @@
 hypothesis
+graphviz
+matplotlib
 black

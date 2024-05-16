@@ -1,5 +1,14 @@
 import re
 import math
+import logging
+import graphviz
+import tempfile
+import shutil
+import matplotlib.pyplot as plt
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 class TreeNode:
@@ -12,39 +21,62 @@ class TreeNode:
 
 class ExpressionTreeInterpreter:
     def __init__(self, user_functions=None):
-        self.operators = {'+', '-', '*', '/', '^', 'sin'}
+        self.operators1 = {  # Operator with one parameter
+            'sin': lambda x: math.sin(math.radians(x)),
+            'cos': lambda x: math.cos(math.radians(x)),
+            'tan': lambda x: math.tan(math.radians(x))
+        }
+        self.operators2 = {  # Operator with two parameters
+            '+': lambda x, y: x + y,
+            '-': lambda x, y: x - y,
+            '*': lambda x, y: x * y,
+            '/': lambda x, y: x / y,
+            '^': lambda x, y: x ** y,
+        }
         self.user_functions = user_functions or {}
 
     def build_expression_tree(self, expression):
         # Convert to postfix expression
         postfix_expression = self.infix_to_postfix(expression)
-        print(postfix_expression)
+        logger.debug(f"Postfix expression: {postfix_expression}")
         # Build expression tree
         stack = []
         for token in postfix_expression:
-            if token not in self.operators and \
-               token not in self.user_functions:
+            if token not in self.operators1 and\
+               token not in self.user_functions\
+               and token not in self.operators2:
                 # number or valuable
                 stack.append(TreeNode(token))
+                logger.debug(f"Created leaf node with value: {token}")
             else:
                 # operator
-                node = TreeNode(token)
-                if token == 'sin':  # operator with only one parameter
+                if token in self.operators1:  # operator with one parameter
+                    node = TreeNode(token)
                     node.left = stack.pop()
+                    logger.debug(f"Created node for operator '{token}'\
+                                with left child {node.left.value}")
                 elif token in self.user_functions:
                     # user function with muitiply parameters
-                    node = TreeNode(self.user_functions[token])
+                    node = TreeNode(token)
                     for _ in \
                             range(
                             len(
                             self.user_functions[token].__code__.co_varnames)):
                         arg_node = stack.pop()
                         node.parameters.append(arg_node)
+                        logger.debug(f"Created node for user\
+                                    function '{token}'\
+                                    with parameters\
+                                {[param.value for param in node.parameters]}")
                 else:  # operator with two parameters
+                    node = TreeNode(token)
                     node.right = stack.pop()
                     if not stack:
                         stack.append(TreeNode(str(0)))
                     node.left = stack.pop()
+                    logger.debug(f"Created node for operator '{token}'\
+                                with children {node.left.value}\
+                                and {node.right.value}")
                 stack.append(node)
         return stack[0]
 
@@ -55,10 +87,12 @@ class ExpressionTreeInterpreter:
             precedence[func] = 4
         output = []
         stack = []
-        tokens = re.findall(r'[a-zA-Z]+|\d+|\-|[-+*/^()]|sin', expression)
+        tokens = re.findall(r'[a-zA-Z]+|\d+|\-|[-+*/^()]|sin|cos|tan',
+                            expression)
         for i, token in enumerate(tokens):
-            if token.isalpha() and token not in self.operators\
-               and token not in self.user_functions:
+            if token.isalpha() and token not in self.operators1\
+               and token not in self.user_functions\
+               and token not in self.operators2:
                 # valuable
                 output.append(token)
             elif token.isdigit():
@@ -87,43 +121,109 @@ class ExpressionTreeInterpreter:
         return output
 
     def evaluate(self, expression_tree, variable_values):
-        if expression_tree:
-            if callable(expression_tree.value):
-                args = []
-                for token in expression_tree.parameters:
-                    if token.value.isdigit():
-                        args.append(float(token.value))
+        try:
+            if expression_tree:
+                if expression_tree.value in self.operators1\
+                   or expression_tree.value in self.operators2:
+                    if expression_tree.right is not None:
+                        left_val = self.evaluate(expression_tree.left,
+                                                 variable_values)
+                        right_val = self.evaluate(expression_tree.right,
+                                                  variable_values)
+                        func = self.operators2[expression_tree.value]
+                        result = func(left_val, right_val)
+                        logger.debug(f"Evaluating function\
+                                    {expression_tree.value} with args\
+                                    {left_val, right_val} = {result}")
+                        return result
                     else:
-                        args.append(float(variable_values.get(token.value, 0)))
-                args.reverse()
-                return expression_tree.value(*args)
-            elif expression_tree.value.isdigit() or\
-                (expression_tree.value[0] == '-' and
-                 expression_tree.value[1:].isdigit()):
-                return float(expression_tree.value)
-            elif (expression_tree.value.isalpha() and
-                  expression_tree.value != 'sin'):
-                return variable_values.get(expression_tree.value, 0)
-            elif expression_tree.value == 'sin':
-                result = self.evaluate(expression_tree.left, variable_values)
-                result_in_degrees = math.radians(result)
-                sin_result = math.sin(result_in_degrees)
-                return sin_result
+                        left_val = self.evaluate(expression_tree.left,
+                                                 variable_values)
+                        func = self.operators1[expression_tree.value]
+                        result = func(left_val)
+                        logger.debug(f"Evaluating function\
+                                     {expression_tree.value} with args\
+                                     {left_val, right_val} = {result}")
+                        return result
+                elif expression_tree.value.isdigit() or\
+                    (expression_tree.value[0] == '-' and
+                     expression_tree.value[1:].isdigit()):
+                    return float(expression_tree.value)
+                elif (expression_tree.value.isalpha() and
+                      expression_tree.value not in self.user_functions):
+                    return variable_values.get(expression_tree.value, 0)
+                else:
+                    args = []
+                    func = self.user_functions[expression_tree.value]
+                    for token in expression_tree.parameters:
+                        if token.value.isdigit():
+                            args.append(float(token.value))
+                        elif token.value.isalpha():
+                            args.append(float(
+                                        variable_values.get(token.value, 0)))
+                        else:
+                            args.append(float(token.value))
+                    args.reverse()
+                    result = func(*args)
+                    logger.debug(f"Evaluating function\
+                                 {expression_tree.value} with args\
+                                 {args} = {result}")
+                    return result
             else:
-                left_val = self.evaluate(expression_tree.left, variable_values)
-                right_val = self.evaluate(expression_tree.right,
-                                          variable_values)
-                operator = expression_tree.value
-                if operator == '+':
-                    return left_val + right_val
-                elif operator == '-':
-                    return left_val - right_val
-                elif operator == '*':
-                    return left_val * right_val
-                elif operator == '/':
-                    return left_val / right_val
-                elif operator == '^':
-                    return left_val ** right_val
+                return None
+        except ValueError as ve:
+            logger.error(f"Data type error: {str(ve)}")
+            raise RuntimeError(f"Data type error: {str(ve)}")
+        except ZeroDivisionError:
+            logger.error("Division by zero")
+            raise RuntimeError("Division by zero")
+        except Exception as e:
+            logger.error(f"Error evaluating expression: {str(e)}")
+            raise RuntimeError(f"Error evaluating expression: {str(e)}")
+
+    def visualize_tree(self, node):
+        dot = graphviz.Digraph(format='png')
+        self._add_nodes(dot, node)
+        self._add_edges(dot, node)
+
+        # Temporarily disable logging
+        logging.disable(logging.CRITICAL)
+
+        temp_dir = tempfile.mkdtemp()
+        output_path = f'{temp_dir}/expression_tree'
+        dot.render(output_path, format='png', view=False)
+
+        # Display the image using matplotlib
+        img = plt.imread(f'{output_path}.png')
+        plt.imshow(img)
+        plt.axis('off')
+        plt.show()
+        shutil.rmtree(temp_dir)
+
+        # Re-enable logging
+        logging.disable(logging.NOTSET)
+
+    def _add_nodes(self, dot, node):
+        if node:
+            dot.node(str(id(node)), node.value)
+            if node.left:
+                self._add_nodes(dot, node.left)
+            if node.right:
+                self._add_nodes(dot, node.right)
+            for param in node.parameters:
+                self._add_nodes(dot, param)
+
+    def _add_edges(self, dot, node):
+        if node:
+            if node.left:
+                dot.edge(str(id(node)), str(id(node.left)))
+                self._add_edges(dot, node.left)
+            if node.right:
+                dot.edge(str(id(node)), str(id(node.right)))
+                self._add_edges(dot, node.right)
+            for param in node.parameters:
+                dot.edge(str(id(node)), str(id(param)))
+                self._add_edges(dot, param)
 
 # # Test 1
 # expression = "a + 2 - sin(-30)*(b - c)"
@@ -154,12 +254,14 @@ class ExpressionTreeInterpreter:
 # print("Expression Tree Built and Evaluated Successfully!")
 # print("Result:", result)
 
-# # Test 4
-# user_functions = {'foo': lambda x, y: x / y}
-# expression = "a + 2 - foo(b, c)*(2 - 1)"
-# interpreter = ExpressionTreeInterpreter(user_functions)
-# tree = interpreter.build_expression_tree(expression)
-# variable_values = {'a': 1, 'b': 3, 'c': 2}
-# result = interpreter.evaluate(tree, variable_values)
-# print("Expression Tree Built and Evaluated Successfully!")
-# print("Result:", result)
+
+# Test 4
+user_functions = {'foo': lambda x, y, z: x / y + z}
+expression = "a + 2 - foo(b, c, d)*(2 - 1)"
+interpreter = ExpressionTreeInterpreter(user_functions)
+tree = interpreter.build_expression_tree(expression)
+variable_values = {'a': 1, 'b': 3, 'c': 2, 'd': 1}
+result = interpreter.evaluate(tree, variable_values)
+print("Expression Tree Built and Evaluated Successfully!")
+print("Result:", result)
+interpreter.visualize_tree(tree)

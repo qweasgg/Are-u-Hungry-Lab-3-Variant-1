@@ -22,6 +22,10 @@ the visualization of the data flow graph.
 
 ## Changelog
 
+- 16.05.2024 - 2
+  Implementing visualization.
+  Implementing Python logging.
+
 - 13.05.2024 - 1
   Implementing basic functionalities to build expression trees
   and evaluate expression results.

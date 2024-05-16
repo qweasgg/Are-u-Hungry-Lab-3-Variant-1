@@ -1,8 +1,6 @@
 import unittest
 from hypothesis import given,  strategies
 
-from expression_tree import ExpressionTreeInterpreter
-
 
 class TestInterpreter(unittest.TestCase):
 

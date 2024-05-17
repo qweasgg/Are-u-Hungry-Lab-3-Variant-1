@@ -178,7 +178,7 @@ class ExpressionTreeInterpreter:
                         result = func(left_val)
                         logger.debug(f"Evaluating function\
                                      {expression_tree.value} with args\
-                                     {left_val, right_val} = {result}")
+                                     {left_val} = {result}")
                         return result
                 elif expression_tree.value.isdigit() or\
                     (expression_tree.value[0] == '-' and

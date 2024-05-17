@@ -1,8 +1,9 @@
 import re
 import math
 import logging
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # type: ignore
 import networkx as nx  # type: ignore
+from functools import wraps
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -15,6 +16,21 @@ class TreeNode:
         self.left = None
         self.right = None
         self.parameters = []
+
+
+def validate_input(func):
+    @wraps(func)
+    def wrapper(self, expression, *args, **kwargs):
+        # Check if the input expression is empty
+        if not expression:
+            raise ValueError("The input expression is empty.")
+
+        # Validate the expression
+        if not self.is_valid_expression(expression):
+            raise ValueError(
+                f"The input expression '{expression}' is invalid.")
+        return func(self, expression, *args, **kwargs)
+    return wrapper
 
 
 class ExpressionTreeInterpreter:
@@ -32,7 +48,28 @@ class ExpressionTreeInterpreter:
             '^': lambda x, y: x ** y,
         }
         self.user_functions = user_functions or {}
+        self.result = None
 
+    def is_valid_expression(self, expression):
+        allowed_chars = re.compile(r'^[\d\w\s+\-*/^().,]+$')
+        if not allowed_chars.match(expression):
+            return False
+        # 检查连续的操作符
+        if re.search(r'[\+\-\*/^]\s*[\+\-\*/^]', expression):
+            return False
+        parentheses = []
+        for char in expression:
+            if char == '(':
+                parentheses.append(char)
+            elif char == ')':
+                if not parentheses:
+                    return False
+                parentheses.pop()
+        if parentheses:
+            return False
+        return True
+
+    @validate_input
     def build_expression_tree(self, expression):
         # Convert to postfix expression
         postfix_expression = self.infix_to_postfix(expression)
@@ -149,16 +186,30 @@ class ExpressionTreeInterpreter:
                     return float(expression_tree.value)
                 elif (expression_tree.value.isalpha() and
                       expression_tree.value not in self.user_functions):
-                    return variable_values.get(expression_tree.value, 0)
+                    if expression_tree.value in variable_values:
+                        return float(variable_values[expression_tree.value])
+                    else:
+                        x = expression_tree.value
+                        raise NameError(
+                            f"Variable '{x}' is not defined.")
                 else:
                     args = []
-                    func = self.user_functions[expression_tree.value]
+                    if expression_tree.value in self.user_functions:
+
+                        func = self.user_functions[expression_tree.value]
+                    else:
+                        raise NameError(f"Function '{expression_tree.value}'\
+                                        is not defined.")
                     for token in expression_tree.parameters:
                         if token.value.isdigit():
                             args.append(float(token.value))
                         elif token.value.isalpha():
-                            args.append(float(
-                                        variable_values.get(token.value, 0)))
+                            if token.value in variable_values:
+                                x = float(variable_values[token.value])
+                                args.append(x)
+                            else:
+                                raise NameError(f"Variable '{token.value}'\
+                                                is not defined.")
                         else:
                             args.append(float(token.value))
                     args.reverse()
@@ -169,15 +220,15 @@ class ExpressionTreeInterpreter:
                     return result
             else:
                 return None
+        except NameError as ne:
+            logger.error(f"Name error: {str(ne)}")
+            raise RuntimeError(f"Name error: {str(ne)}")
         except ValueError as ve:
             logger.error(f"Data type error: {str(ve)}")
             raise RuntimeError(f"Data type error: {str(ve)}")
         except ZeroDivisionError:
             logger.error("Division by zero")
             raise RuntimeError("Division by zero")
-        except Exception as e:
-            logger.error(f"Error evaluating expression: {str(e)}")
-            raise RuntimeError(f"Error evaluating expression: {str(e)}")
 
     def visualize_tree(self, tree):
         def add_edges(graph, node, parent=None):
@@ -190,11 +241,6 @@ class ExpressionTreeInterpreter:
                 add_edges(graph, node.right, node_id)
                 for param in node.parameters:
                     add_edges(graph, param, node_id)
-
-        # Disable logging
-        logging.disable(logging.CRITICAL)
-
-        try:
             graph = nx.DiGraph()
             add_edges(graph, tree)
 
@@ -207,48 +253,14 @@ class ExpressionTreeInterpreter:
                     node_color='skyblue', font_size=10,
                     font_weight='bold', arrows=True)
             plt.show()
-        finally:
-            # Re-enable logging
-            logging.disable(logging.NOTSET)
 
-
-# # Test 1
-# expression = "a + 2 - sin(-30)*(b - c)"
-# interpreter = ExpressionTreeInterpreter()
-# tree = interpreter.build_expression_tree(expression)
-# variable_values = {'a': 1, 'b': 3, 'c': 2}
-# result = interpreter.evaluate(tree, variable_values)
-# print("Expression Tree Built and Evaluated Successfully!")
-# print("Result:", result)
-
-# # Test 2
-# user_functions = {'foo': lambda x: x + 2}
-# expression = "a + 2 - foo(-1)*(b - c)"
-# interpreter = ExpressionTreeInterpreter(user_functions)
-# tree = interpreter.build_expression_tree(expression)
-# variable_values = {'a': 1, 'b': 3, 'c': 2}
-# result = interpreter.evaluate(tree, variable_values)
-# print("Expression Tree Built and Evaluated Successfully!")
-# print("Result:", result)
-
-# # Test 3
-# user_functions = {'foo': lambda x, y: x ** y}
-# expression = "a + 2 - foo(2, 3)*(b - c)"
-# interpreter = ExpressionTreeInterpreter(user_functions)
-# tree = interpreter.build_expression_tree(expression)
-# variable_values = {'a': 1, 'b': 3, 'c': 2}
-# result = interpreter.evaluate(tree, variable_values)
-# print("Expression Tree Built and Evaluated Successfully!")
-# print("Result:", result)
-
-
-# Test 4
-user_functions = {'foo': lambda x, y, z: x / y + z}
-expression = "a + 2 - foo(b, c, d)*(2 - 1)"
-interpreter = ExpressionTreeInterpreter(user_functions)
-tree = interpreter.build_expression_tree(expression)
-variable_values = {'a': 1, 'b': 3, 'c': 2, 'd': 1}
-result = interpreter.evaluate(tree, variable_values)
-print("Expression Tree Built and Evaluated Successfully!")
-print("Result:", result)
-interpreter.visualize_tree(tree)
+    def prase_expression(self, expression, variable_values):
+        try:
+            tree = self.build_expression_tree(expression)
+            self.result = self.evaluate(tree, variable_values)
+            print("Expression Tree Built and Evaluated Successfully!")
+            print("Result:", self.result)
+            self.visualize_tree(tree)
+        except ValueError as e:
+            logger.error(f"Validation error: {e}")
+            raise RuntimeError(f"Validation error: {e}")

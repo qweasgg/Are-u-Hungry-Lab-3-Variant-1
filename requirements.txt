@@ -1,4 +1,3 @@
-hypothesis
 matplotlib
 networkx
 black

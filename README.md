@@ -13,7 +13,14 @@ the visualization of the data flow graph.
 
 ## Features
 
-- PBT: `test_interpreter`
+- Test: `test_evaluate` test the basic function of interpreter
+  Test: `test_validate_input` test if the input data is invalid
+  Func: `validate_input` used to validate input
+  Func: `build_expression_tree`used to buld tree
+  Func: `infix_to_postfix`used to create postfix for expression
+  Func: `evaluate` used to calculate result
+  Func: `visualize_tree` used to visualize the expression tree
+  Func: `prase_expression` used to run the whole process
 
 ## Contribution
 
@@ -21,6 +28,12 @@ the visualization of the data flow graph.
 - Ying Yi (1812742922@qq.com) -- PBT test.
 
 ## Changelog
+
+- 17.05.2024 - 3
+  Implementing input validate.
+  Add some exception process.
+  Implement test.
+  Update README.
 
 - 16.05.2024 - 2
   Implementing visualization.
